@@ -180,9 +180,17 @@ export async function editImage(apiKey, baseImageDataUrl, editPrompt) {
  * @returns {Promise<Array>} - Array of cards with generated images
  */
 export async function batchGenerateCards(apiKey, cards, basePrompt, onProgress, onCardGenerated, cancelRef = null) {
-  const results = []
+  const totalToGenerate = cards.filter(card => !card.image).length
+  const cardResults = new Map()
   let referenceImage = null
   let completedCount = 0
+
+  if (totalToGenerate === 0) {
+    return cards.map(card => ({
+      ...card,
+      isGenerating: false
+    }))
+  }
 
   // Helper function to generate a single card
   const generateCard = async (card, useReference = false) => {
@@ -195,17 +203,17 @@ export async function batchGenerateCards(apiKey, cards, basePrompt, onProgress, 
         ...card,
         image: imageDataUrl,
         previousVersions: [],
-        isGenerating: false
+        isGenerating: false,
+        error: null
       }
 
-      // Notify that this card is ready
       if (onCardGenerated) {
         onCardGenerated(card.id, imageDataUrl)
       }
 
       completedCount++
       if (onProgress) {
-        onProgress(completedCount, cards.length)
+        onProgress(completedCount, totalToGenerate)
       }
 
       return generatedCard
@@ -225,46 +233,83 @@ export async function batchGenerateCards(apiKey, cards, basePrompt, onProgress, 
 
       completedCount++
       if (onProgress) {
-        onProgress(completedCount, cards.length)
+        onProgress(completedCount, totalToGenerate)
       }
 
       return errorCard
     }
   }
 
-  // Step 1: Generate first card sequentially to get reference image
-  console.log('Generating first card as style reference...')
-  const firstCard = await generateCard(cards[0], false)
-  referenceImage = firstCard.image
-  results.push(firstCard)
+  const existingReference = cards.find(card => card.image)
 
-  if (referenceImage) {
-    console.log('First card generated - now generating remaining 77 cards in parallel batches of 5')
+  if (existingReference) {
+    referenceImage = existingReference.image
+    cardResults.set(existingReference.id, {
+      ...existingReference,
+      isGenerating: false,
+      error: null,
+      previousVersions: existingReference.previousVersions || []
+    })
   }
 
-  // Step 2: Generate remaining cards in parallel batches of 5
-  const remainingCards = cards.slice(1)
+  if (!referenceImage) {
+    const firstCardToGenerate = cards.find(card => !card.image)
+    if (firstCardToGenerate) {
+      console.log(`Generating style reference using ${firstCardToGenerate.name}...`)
+      const generatedCard = await generateCard(firstCardToGenerate, false)
+      referenceImage = generatedCard.image
+      cardResults.set(firstCardToGenerate.id, generatedCard)
+    }
+  }
+
+  // Store any other pre-generated cards
+  for (const card of cards) {
+    if (cardResults.has(card.id)) continue
+    if (card.image) {
+      cardResults.set(card.id, {
+        ...card,
+        isGenerating: false,
+        error: null,
+        previousVersions: card.previousVersions || []
+      })
+    }
+  }
+
+  const cardsToGenerate = cards.filter(card => !card.image && !cardResults.has(card.id))
   const BATCH_SIZE = 5
 
-  for (let i = 0; i < remainingCards.length; i += BATCH_SIZE) {
-    // Check for cancellation before each batch
+  for (let i = 0; i < cardsToGenerate.length; i += BATCH_SIZE) {
     if (cancelRef?.current?.cancelled) {
       console.log('Generation cancelled by user')
       throw new Error('Generation cancelled by user')
     }
 
-    const batch = remainingCards.slice(i, i + BATCH_SIZE)
+    const batch = cardsToGenerate.slice(i, i + BATCH_SIZE)
+    const useReference = !!referenceImage
 
-    // Generate batch in parallel
     const batchResults = await Promise.all(
-      batch.map(card => generateCard(card, true))
+      batch.map(card => generateCard(card, useReference))
     )
 
-    results.push(...batchResults)
+    batchResults.forEach((result, index) => {
+      const sourceCard = batch[index]
+      cardResults.set(sourceCard.id, result)
+      if (!referenceImage && result.image) {
+        referenceImage = result.image
+      }
+    })
 
-    // Small delay between batches to avoid rate limiting
     await new Promise(resolve => setTimeout(resolve, 200))
   }
 
-  return results
+  return cards.map(card => {
+    if (cardResults.has(card.id)) {
+      return cardResults.get(card.id)
+    }
+
+    return {
+      ...card,
+      isGenerating: false
+    }
+  })
 }
