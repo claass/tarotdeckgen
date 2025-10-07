@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { generateImage } from '../services/geminiApi'
 
-export default function BackCoverGenerator({ apiKey, currentBackCover, onBackCoverGenerated }) {
+export default function BackCoverGenerator({ currentBackCover, onBackCoverGenerated }) {
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState(null)
@@ -14,7 +14,6 @@ export default function BackCoverGenerator({ apiKey, currentBackCover, onBackCov
 
     try {
       const imageDataUrl = await generateImage(
-        apiKey,
         `Create a tarot card back cover design. ${prompt}. The design should be mystical, ornate, and symmetrical, suitable for the back of all tarot cards in a deck. IMPORTANT: Create this as a vertical portrait image with a 2:3 aspect ratio (width:height). The entire design should fit within this format without any cropping.`
       )
       onBackCoverGenerated(imageDataUrl)

@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { batchGenerateCards } from '../services/geminiApi'
 import { initializeCards } from '../data/tarotCards'
 
-export default function BatchGenerator({ apiKey, onBatchGenerated, onCardGenerated }) {
+export default function BatchGenerator({ onBatchGenerated, onCardGenerated }) {
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState({ current: 0, total: 0 })
@@ -28,8 +28,7 @@ export default function BatchGenerator({ apiKey, onBatchGenerated, onCardGenerat
       // Initialize cards immediately to show placeholders
       onBatchGenerated(cards)
 
-      const generatedCards = await batchGenerateCards(
-        apiKey,
+      await batchGenerateCards(
         cards,
         prompt,
         (current, total) => setProgress({ current, total }),

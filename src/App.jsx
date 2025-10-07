@@ -6,9 +6,10 @@ import CardGrid from './components/CardGrid'
 import CardEditor from './components/CardEditor'
 import ComparisonDialog from './components/ComparisonDialog'
 import { loadState, saveState } from './services/localStorage'
+import { getConfiguredApiKey } from './services/geminiApi'
 
 function App() {
-  const [apiKey, setApiKey] = useState('')
+  const apiKey = getConfiguredApiKey()
   const [backCover, setBackCover] = useState(null)
   const [cards, setCards] = useState([])
   const [selectedCard, setSelectedCard] = useState(null)
@@ -16,18 +17,13 @@ function App() {
 
   useEffect(() => {
     const state = loadState()
-    if (state.apiKey) setApiKey(state.apiKey)
     if (state.backCover) setBackCover(state.backCover)
     if (state.cards) setCards(state.cards)
   }, [])
 
   useEffect(() => {
-    saveState({ apiKey, backCover, cards })
-  }, [apiKey, backCover, cards])
-
-  const handleApiKeyChange = (key) => {
-    setApiKey(key)
-  }
+    saveState({ backCover, cards })
+  }, [backCover, cards])
 
   const handleBackCoverGenerated = (imageData) => {
     setBackCover(imageData)
@@ -77,18 +73,16 @@ function App() {
           Tarot Card Visual Asset Generator
         </h1>
 
-        <ApiKeySettings apiKey={apiKey} onApiKeyChange={handleApiKeyChange} />
+        <ApiKeySettings apiKey={apiKey} />
 
         {apiKey && (
           <>
             <BackCoverGenerator
-              apiKey={apiKey}
               currentBackCover={backCover}
               onBackCoverGenerated={handleBackCoverGenerated}
             />
 
             <BatchGenerator
-              apiKey={apiKey}
               onBatchGenerated={handleBatchGenerated}
               onCardGenerated={handleCardGenerated}
             />
@@ -102,7 +96,6 @@ function App() {
             {selectedCard && (
               <CardEditor
                 card={selectedCard}
-                apiKey={apiKey}
                 onClose={() => setSelectedCard(null)}
                 onImageGenerated={handleCardEdit}
               />

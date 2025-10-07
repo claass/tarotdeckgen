@@ -9,7 +9,7 @@ A React application for generating visual assets for tarot card reading apps usi
 - ✏️ **Individual Card Editing**: Select any card and provide edit instructions to refine it
 - 🔄 **Version Comparison**: Compare old and new versions side-by-side before choosing
 - 💾 **Local Storage**: All images and state are saved in your browser's localStorage
-- 🔑 **Secure API Key Management**: API key stored securely in browser
+- 🔑 **Secure API Key Management**: API key loaded automatically from environment variables
 
 ## Getting Started
 
@@ -25,17 +25,17 @@ A React application for generating visual assets for tarot card reading apps usi
    npm install
    ```
 
-2. Start the development server:
+2. Create a `.env` file (or configure your hosting provider's secrets) with your Gemini key. The application reads from `GEMINI_API_KEY` (or Vite's `VITE_GEMINI_API_KEY` during local development), so add:
+   ```bash
+   GEMINI_API_KEY=your-key-here
+   ```
+
+3. Start the development server:
    ```bash
    npm run dev
    ```
 
-3. Open your browser to the URL shown in the terminal (usually http://localhost:5173)
-
-### First Time Setup
-
-1. Enter your Gemini API key in the "API Configuration" section
-2. The key will be saved securely in your browser
+4. Open your browser to the URL shown in the terminal (usually http://localhost:5173)
 
 ## How to Use
 

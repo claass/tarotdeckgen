@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { generateImage, editImage } from '../services/geminiApi'
 
-export default function CardEditor({ card, apiKey, onClose, onImageGenerated }) {
+export default function CardEditor({ card, onClose, onImageGenerated }) {
   const [editPrompt, setEditPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState(null)
@@ -16,11 +16,11 @@ export default function CardEditor({ card, apiKey, onClose, onImageGenerated }) 
       let newImage
       if (card.image) {
         // Edit existing image
-        newImage = await editImage(apiKey, card.image, editPrompt)
+        newImage = await editImage(card.image, editPrompt)
       } else {
         // Generate new image from scratch
         const fullPrompt = `Create a tarot card illustration for "${card.name}". ${editPrompt}. The card should be vertically oriented with mystical and symbolic imagery. IMPORTANT: Create this as a vertical portrait image with a 2:3 aspect ratio (width:height). The entire design should fit within this format without any cropping.`
-        newImage = await generateImage(apiKey, fullPrompt)
+        newImage = await generateImage(fullPrompt)
       }
       onImageGenerated(card.id, newImage)
       setEditPrompt('')
