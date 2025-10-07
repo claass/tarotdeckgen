@@ -1,36 +1,35 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { batchGenerateCards } from '../services/geminiApi'
-import { initializeCards } from '../data/tarotCards'
 
-export default function BatchGenerator({ apiKey, onBatchGenerated, onCardGenerated }) {
-  const [prompt, setPrompt] = useState('')
+export default function BatchGenerator({ apiKey, prompt, cards, onBatchGenerated, onCardGenerated }) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState({ current: 0, total: 0 })
   const [error, setError] = useState(null)
   const cancelRef = useRef({ cancelled: false })
 
+  const remainingCardCount = useMemo(() => cards.filter(card => !card.image).length, [cards])
+
   const handleGenerate = async () => {
-    if (!prompt.trim()) return
+    if (!prompt?.trim() || cards.length === 0 || remainingCardCount === 0) {
+      return
+    }
 
     setIsGenerating(true)
     setError(null)
-    setProgress({ current: 0, total: 78 })
+    setProgress({ current: 0, total: remainingCardCount })
     cancelRef.current.cancelled = false
 
     try {
-      const cards = initializeCards().map(card => ({
+      const cardsWithStatus = cards.map(card => ({
         ...card,
-        image: null,
-        previousVersions: [],
-        isGenerating: true
+        isGenerating: !!card.image ? false : true
       }))
 
-      // Initialize cards immediately to show placeholders
-      onBatchGenerated(cards)
+      onBatchGenerated(cardsWithStatus)
 
       const generatedCards = await batchGenerateCards(
         apiKey,
-        cards,
+        cardsWithStatus,
         prompt,
         (current, total) => setProgress({ current, total }),
         (cardId, imageDataUrl, error) => {
@@ -42,9 +41,11 @@ export default function BatchGenerator({ apiKey, onBatchGenerated, onCardGenerat
         cancelRef
       )
 
-      if (!cancelRef.current.cancelled) {
-        setPrompt('')
+      if (!cancelRef.current.cancelled && onBatchGenerated) {
+        onBatchGenerated(generatedCards)
       }
+
+      // Prompt remains locked after preview confirmation
     } catch (err) {
       if (err.message !== 'Generation cancelled by user') {
         setError(err.message)
@@ -70,32 +71,33 @@ export default function BatchGenerator({ apiKey, onBatchGenerated, onCardGenerat
     ? Math.round((progress.current / progress.total) * 100)
     : 0
 
+  const allCardsGenerated = remainingCardCount === 0
+
   return (
     <div className="mb-8 p-6 bg-gray-800 rounded-lg border border-gray-700">
-      <h2 className="text-xl font-semibold mb-4 text-purple-400">Batch Card Generator</h2>
+      <h2 className="text-xl font-semibold mb-4 text-purple-400">Generate Remaining Cards</h2>
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm text-gray-400 mb-2">
-            Style Prompt for All 78 Cards
-          </label>
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="E.g., Art Nouveau style with clean line work and ornate borders. Soft watercolor textures with warm color palette. Symmetrical composition. Consistent, cohesive series with uniform artistic style across all cards..."
-            rows={3}
-            className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:border-purple-500 text-white resize-none"
-            disabled={isGenerating}
-          />
+          <p className="text-sm text-gray-300">
+            The confirmed style will be applied to the rest of the deck. Your preview card will guide the model for consistent results.
+          </p>
+          <p className="text-xs text-gray-500 mt-2">
+            Remaining cards to generate: {remainingCardCount}
+          </p>
         </div>
 
         <div className="flex gap-2">
           <button
             onClick={handleGenerate}
-            disabled={!prompt.trim() || isGenerating}
+            disabled={isGenerating || allCardsGenerated}
             className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors"
           >
-            {isGenerating ? `Generating... (${progress.current}/${progress.total})` : 'Generate All 78 Cards'}
+            {isGenerating
+              ? `Generating... (${progress.current}/${progress.total})`
+              : allCardsGenerated
+                ? 'All cards generated'
+                : `Generate ${remainingCardCount} Cards`}
           </button>
 
           {isGenerating && (
@@ -129,11 +131,10 @@ export default function BatchGenerator({ apiKey, onBatchGenerated, onCardGenerat
         )}
 
         <div className="text-xs text-gray-500 space-y-1">
-          <p>⚠️ This will generate 78 images and may take several minutes.</p>
-          <p>✨ The first card generated will be used as a style reference for all remaining cards to ensure consistency.</p>
+          <p>⚠️ This will generate the remaining tarot cards and may take several minutes.</p>
+          <p>✨ The confirmed preview card is used as a style reference for all remaining cards.</p>
           <p>⚡ Cards are generated in parallel batches of 5 for faster completion.</p>
-          <p>💡 For best consistency, be very specific about artistic style, technique, colors, and composition.</p>
-          <p>🎨 Example: "Art Nouveau with clean line work, ornate braided borders, soft watercolor textures, warm muted palette (cream, soft blue, brown, gold), symmetrical layout, vintage poster aesthetic"</p>
+          <p>💡 Generation progress is saved as each card completes, even if you cancel midway.</p>
         </div>
       </div>
     </div>

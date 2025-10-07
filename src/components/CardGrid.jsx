@@ -3,7 +3,7 @@ export default function CardGrid({ cards, backCover, onCardSelect }) {
     return (
       <div className="p-8 bg-gray-800 rounded-lg border border-gray-700 text-center">
         <p className="text-gray-400">
-          No cards generated yet. Use the Batch Generator above to create your tarot deck.
+          No cards generated yet. Generate a style preview above to start building your tarot deck.
         </p>
       </div>
     )
