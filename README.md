@@ -9,7 +9,7 @@ A React application for generating visual assets for tarot card reading apps usi
 - ✏️ **Individual Card Editing**: Select any card and provide edit instructions to refine it
 - 🔄 **Version Comparison**: Compare old and new versions side-by-side before choosing
 - 💾 **Local Storage**: All images and state are saved in your browser's localStorage
-- 🔑 **Secure API Key Management**: API key stored securely in browser
+- 🔑 **Secure API Key Management**: API key loaded from environment variables
 
 ## Getting Started
 
@@ -17,6 +17,7 @@ A React application for generating visual assets for tarot card reading apps usi
 
 - Node.js (v14 or higher)
 - A Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+- The `GEMINI_API_KEY` environment variable set before running the app
 
 ### Installation
 
@@ -34,8 +35,7 @@ A React application for generating visual assets for tarot card reading apps usi
 
 ### First Time Setup
 
-1. Enter your Gemini API key in the "API Configuration" section
-2. The key will be saved securely in your browser
+Set the `GEMINI_API_KEY` environment variable before starting the development server.
 
 ## How to Use
 

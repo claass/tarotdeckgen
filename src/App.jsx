@@ -9,7 +9,7 @@ import { initializeCards } from './data/tarotCards'
 import { loadState, saveState } from './services/localStorage'
 
 function App() {
-  const [apiKey, setApiKey] = useState('')
+  const envApiKey = import.meta.env.GEMINI_API_KEY || ''
   const [backCover, setBackCover] = useState(null)
   const [cards, setCards] = useState([])
   const [selectedCard, setSelectedCard] = useState(null)
@@ -19,7 +19,6 @@ function App() {
 
   useEffect(() => {
     const state = loadState()
-    if (state.apiKey) setApiKey(state.apiKey)
     if (state.backCover) setBackCover(state.backCover)
     if (state.cards) setCards(state.cards)
     if (state.stylePrompt) setStylePrompt(state.stylePrompt)
@@ -27,12 +26,8 @@ function App() {
   }, [])
 
   useEffect(() => {
-    saveState({ apiKey, backCover, cards, stylePrompt, hasConfirmedStyle })
-  }, [apiKey, backCover, cards, stylePrompt, hasConfirmedStyle])
-
-  const handleApiKeyChange = (key) => {
-    setApiKey(key)
-  }
+    saveState({ backCover, cards, stylePrompt, hasConfirmedStyle })
+  }, [backCover, cards, stylePrompt, hasConfirmedStyle])
 
   const handleBatchGenerated = (generatedCards) => {
     setCards(generatedCards)
@@ -113,13 +108,13 @@ function App() {
           Tarot Card Visual Asset Generator
         </h1>
 
-        <ApiKeySettings apiKey={apiKey} onApiKeyChange={handleApiKeyChange} />
+        <ApiKeySettings apiKey={envApiKey} />
 
-        {apiKey && (
+        {envApiKey ? (
           <>
             {!hasConfirmedStyle ? (
               <StylePreviewGenerator
-                apiKey={apiKey}
+                apiKey={envApiKey}
                 onPreviewConfirmed={handlePreviewConfirmed}
               />
             ) : (
@@ -162,7 +157,7 @@ function App() {
 
             {hasConfirmedStyle && (
               <BatchGenerator
-                apiKey={apiKey}
+                apiKey={envApiKey}
                 prompt={stylePrompt}
                 cards={cards}
                 onBatchGenerated={handleBatchGenerated}
@@ -179,7 +174,7 @@ function App() {
             {selectedCard && (
               <CardEditor
                 card={selectedCard}
-                apiKey={apiKey}
+                apiKey={envApiKey}
                 onClose={() => setSelectedCard(null)}
                 onImageGenerated={handleCardEdit}
               />
@@ -193,7 +188,7 @@ function App() {
               />
             )}
           </>
-        )}
+        ) : null}
       </div>
     </div>
   )
