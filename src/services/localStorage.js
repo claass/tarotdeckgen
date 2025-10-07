@@ -23,7 +23,8 @@ export function loadState() {
  */
 export function saveState(state) {
   try {
-    const serializedState = JSON.stringify(state)
+    const { apiKey, ...rest } = state || {}
+    const serializedState = JSON.stringify(rest)
     localStorage.setItem(STORAGE_KEY, serializedState)
   } catch (error) {
     console.error('Error saving state to localStorage:', error)
@@ -41,27 +42,3 @@ export function clearState() {
   }
 }
 
-/**
- * Save API key separately for security
- * @param {string} apiKey - The API key to save
- */
-export function saveApiKey(apiKey) {
-  try {
-    localStorage.setItem('tarot-api-key', apiKey)
-  } catch (error) {
-    console.error('Error saving API key:', error)
-  }
-}
-
-/**
- * Load API key
- * @returns {string|null} - The saved API key or null
- */
-export function loadApiKey() {
-  try {
-    return localStorage.getItem('tarot-api-key')
-  } catch (error) {
-    console.error('Error loading API key:', error)
-    return null
-  }
-}

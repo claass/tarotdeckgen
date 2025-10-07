@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { generateImage, editImage } from '../services/geminiApi'
 
-export default function CardEditor({ card, apiKey, onClose, onImageGenerated }) {
+export default function CardEditor({ apiKey, card, onClose, onImageGenerated }) {
   const [editPrompt, setEditPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState(null)

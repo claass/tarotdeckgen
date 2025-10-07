@@ -28,7 +28,7 @@ export default function BatchGenerator({ apiKey, onBatchGenerated, onCardGenerat
       // Initialize cards immediately to show placeholders
       onBatchGenerated(cards)
 
-      const generatedCards = await batchGenerateCards(
+      await batchGenerateCards(
         apiKey,
         cards,
         prompt,

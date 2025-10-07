@@ -2,15 +2,46 @@ import { cropAndRoundImage } from '../utils/imageProcessing'
 
 const API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent'
 
+const importMetaEnv = typeof import.meta !== 'undefined' ? import.meta.env ?? {} : {}
+
+const possibleEnvKeys = [
+  importMetaEnv?.VITE_GEMINI_API_KEY,
+  importMetaEnv?.GEMINI_API_KEY
+]
+
+if (typeof process !== 'undefined' && process?.env) {
+  possibleEnvKeys.push(
+    process.env.VITE_GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY
+  )
+}
+
+const ENV_API_KEY = possibleEnvKeys.find(key => typeof key === 'string' && key.trim().length > 0) || ''
+
+function resolveApiKey(providedKey) {
+  if (typeof providedKey === 'string' && providedKey.trim().length > 0) {
+    return providedKey.trim()
+  }
+  if (ENV_API_KEY) {
+    return ENV_API_KEY
+  }
+  throw new Error('Gemini API key is not configured. Please set it via environment variables.')
+}
+
+export function getConfiguredApiKey() {
+  return ENV_API_KEY
+}
+
 /**
  * Generate an image using Gemini 2.5 Flash Image (Nano Banana)
- * @param {string} apiKey - The Gemini API key
+ * @param {string} apiKey - Optional Gemini API key (falls back to environment configuration)
  * @param {string} prompt - The text prompt for image generation
  * @param {string} referenceImage - Optional data URL of reference image for style consistency
  * @returns {Promise<string>} - Base64 encoded image data URL
  */
 export async function generateImage(apiKey, prompt, referenceImage = null) {
   try {
+    const resolvedApiKey = resolveApiKey(apiKey)
     // Build parts array
     const parts = []
 
@@ -39,7 +70,7 @@ export async function generateImage(apiKey, prompt, referenceImage = null) {
     const response = await fetch(API_ENDPOINT, {
       method: 'POST',
       headers: {
-        'x-goog-api-key': apiKey,
+        'x-goog-api-key': resolvedApiKey,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -91,13 +122,14 @@ export async function generateImage(apiKey, prompt, referenceImage = null) {
 
 /**
  * Generate an edited version of an image
- * @param {string} apiKey - The Gemini API key
+ * @param {string} apiKey - Optional Gemini API key (falls back to environment configuration)
  * @param {string} baseImageDataUrl - The base64 data URL of the original image
  * @param {string} editPrompt - The edit instructions
  * @returns {Promise<string>} - Base64 encoded image data URL
  */
 export async function editImage(apiKey, baseImageDataUrl, editPrompt) {
   try {
+    const resolvedApiKey = resolveApiKey(apiKey)
     // Extract base64 data and mime type from data URL
     const matches = baseImageDataUrl.match(/^data:([^;]+);base64,(.+)$/)
     if (!matches) {
@@ -109,7 +141,7 @@ export async function editImage(apiKey, baseImageDataUrl, editPrompt) {
     const response = await fetch(API_ENDPOINT, {
       method: 'POST',
       headers: {
-        'x-goog-api-key': apiKey,
+        'x-goog-api-key': resolvedApiKey,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -171,7 +203,7 @@ export async function editImage(apiKey, baseImageDataUrl, editPrompt) {
 
 /**
  * Batch generate images for multiple cards
- * @param {string} apiKey - The Gemini API key
+ * @param {string} apiKey - Optional Gemini API key (falls back to environment configuration)
  * @param {Array} cards - Array of card objects
  * @param {string} basePrompt - Base prompt to generate consistent style
  * @param {Function} onProgress - Callback for progress updates (current, total)
@@ -180,6 +212,7 @@ export async function editImage(apiKey, baseImageDataUrl, editPrompt) {
  * @returns {Promise<Array>} - Array of cards with generated images
  */
 export async function batchGenerateCards(apiKey, cards, basePrompt, onProgress, onCardGenerated, cancelRef = null) {
+  const resolvedApiKey = resolveApiKey(apiKey)
   const results = []
   let referenceImage = null
   let completedCount = 0
@@ -189,7 +222,7 @@ export async function batchGenerateCards(apiKey, cards, basePrompt, onProgress, 
     const cardPrompt = `${basePrompt}. Create a tarot card illustration for "${card.name}". The card should be vertically oriented with mystical and symbolic imagery. ${useReference ? 'Match the style of the reference image exactly.' : ''} Create this as a vertical portrait image with a 2:3 aspect ratio (width:height). The entire design should fit within this format without any cropping.`
 
     try {
-      const imageDataUrl = await generateImage(apiKey, cardPrompt, useReference ? referenceImage : null)
+      const imageDataUrl = await generateImage(resolvedApiKey, cardPrompt, useReference ? referenceImage : null)
 
       const generatedCard = {
         ...card,

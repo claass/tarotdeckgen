@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import ApiKeySettings from './components/ApiKeySettings'
 import BackCoverGenerator from './components/BackCoverGenerator'
 import BatchGenerator from './components/BatchGenerator'
@@ -6,9 +6,10 @@ import CardGrid from './components/CardGrid'
 import CardEditor from './components/CardEditor'
 import ComparisonDialog from './components/ComparisonDialog'
 import { loadState, saveState } from './services/localStorage'
+import { getConfiguredApiKey } from './services/geminiApi'
 
 function App() {
-  const [apiKey, setApiKey] = useState('')
+  const [apiKey, setApiKey] = useState(() => getConfiguredApiKey())
   const [backCover, setBackCover] = useState(null)
   const [cards, setCards] = useState([])
   const [selectedCard, setSelectedCard] = useState(null)
@@ -16,18 +17,17 @@ function App() {
 
   useEffect(() => {
     const state = loadState()
-    if (state.apiKey) setApiKey(state.apiKey)
     if (state.backCover) setBackCover(state.backCover)
     if (state.cards) setCards(state.cards)
   }, [])
 
   useEffect(() => {
-    saveState({ apiKey, backCover, cards })
-  }, [apiKey, backCover, cards])
+    saveState({ backCover, cards })
+  }, [backCover, cards])
 
-  const handleApiKeyChange = (key) => {
+  const handleApiKeyChange = useCallback((key) => {
     setApiKey(key)
-  }
+  }, [setApiKey])
 
   const handleBackCoverGenerated = (imageData) => {
     setBackCover(imageData)
@@ -101,8 +101,8 @@ function App() {
 
             {selectedCard && (
               <CardEditor
-                card={selectedCard}
                 apiKey={apiKey}
+                card={selectedCard}
                 onClose={() => setSelectedCard(null)}
                 onImageGenerated={handleCardEdit}
               />
