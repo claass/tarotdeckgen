@@ -21,13 +21,46 @@ export async function cropAndRoundImage(imageDataUrl, cornerRadius = 12) {
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
         const data = imageData.data
 
-        // Detect content bounds (non-white pixels)
+        // Detect content bounds (non-background pixels)
         let minX = canvas.width
         let minY = canvas.height
         let maxX = 0
         let maxY = 0
 
-        const threshold = 250 // Consider pixels darker than this as content
+        // Sample the outer edge to determine the background colour. This helps
+        // us reliably crop away subtle white (or near-white) borders that the
+        // model often leaves on one side of the canvas.
+        const sampleCoords = [
+          [0, 0],
+          [canvas.width - 1, 0],
+          [0, canvas.height - 1],
+          [canvas.width - 1, canvas.height - 1],
+          [Math.floor(canvas.width / 2), 0],
+          [Math.floor(canvas.width / 2), canvas.height - 1],
+          [0, Math.floor(canvas.height / 2)],
+          [canvas.width - 1, Math.floor(canvas.height / 2)]
+        ]
+
+        const background = sampleCoords.reduce(
+          (acc, [x, y]) => {
+            const i = (y * canvas.width + x) * 4
+            acc.r += data[i]
+            acc.g += data[i + 1]
+            acc.b += data[i + 2]
+            acc.a += data[i + 3]
+            return acc
+          },
+          { r: 0, g: 0, b: 0, a: 0 }
+        )
+
+        const totalSamples = sampleCoords.length
+        background.r /= totalSamples
+        background.g /= totalSamples
+        background.b /= totalSamples
+        background.a /= totalSamples
+
+        const colorTolerance = 18
+        const alphaThreshold = 16
 
         for (let y = 0; y < canvas.height; y++) {
           for (let x = 0; x < canvas.width; x++) {
@@ -37,8 +70,16 @@ export async function cropAndRoundImage(imageDataUrl, cornerRadius = 12) {
             const b = data[i + 2]
             const a = data[i + 3]
 
-            // If pixel is not white/transparent
-            if (a > 10 && (r < threshold || g < threshold || b < threshold)) {
+            const colorDistance = Math.sqrt(
+              Math.pow(r - background.r, 2) +
+                Math.pow(g - background.g, 2) +
+                Math.pow(b - background.b, 2)
+            )
+
+            const isBackground =
+              a <= alphaThreshold || colorDistance <= colorTolerance
+
+            if (!isBackground) {
               if (x < minX) minX = x
               if (x > maxX) maxX = x
               if (y < minY) minY = y
@@ -48,7 +89,7 @@ export async function cropAndRoundImage(imageDataUrl, cornerRadius = 12) {
         }
 
         // Add small padding
-        const padding = 5
+        const padding = 2
         minX = Math.max(0, minX - padding)
         minY = Math.max(0, minY - padding)
         maxX = Math.min(canvas.width - 1, maxX + padding)
@@ -56,6 +97,12 @@ export async function cropAndRoundImage(imageDataUrl, cornerRadius = 12) {
 
         const cropWidth = maxX - minX + 1
         const cropHeight = maxY - minY + 1
+
+        // If no content was detected, return the original image
+        if (cropWidth <= 0 || cropHeight <= 0) {
+          resolve(imageDataUrl)
+          return
+        }
 
         // Create new canvas with cropped dimensions
         const croppedCanvas = document.createElement('canvas')
